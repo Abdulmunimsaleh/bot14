@@ -43,13 +43,14 @@ def send_message_to_tidio(message: str):
         page.goto(TIDIO_CHAT_URL)
         page.wait_for_selector("textarea", timeout=10000)
 
-        # Notify user first
-        page.fill("textarea", "Hold while we direct you to live chat or live agent.")
+        # Reassure the user first
+        reassuring_message = "Please hold on. We're connecting you to a live agent. Someone will assist you shortly."
+        page.fill("textarea", reassuring_message)
         time.sleep(2)
         page.keyboard.press("Enter")
         time.sleep(2)
 
-        # Send internal message to human agent
+        # Then send the backend notification
         page.fill("textarea", message)
         time.sleep(2)
         page.keyboard.press("Enter")
@@ -98,7 +99,7 @@ Answer:
     if needs_human_agent(question, answer):
         send_message_to_tidio(f"User asked: '{question}'\nBot could not answer.")
         return {
-            "message": "I am unable to answer this question. A human agent has been notified.",
+            "message": "Please hold on. We're connecting you to a live agent. Someone will assist you shortly.",
             "status": "transferred_to_human"
         }
 
@@ -110,7 +111,7 @@ def get_answer(question: str = Query(..., title="Question", description="Ask a q
     if any(keyword in question.lower() for keyword in ["transfer to human agent", "talk to a person", "speak to support"]):
         send_message_to_tidio(f"User requested a human agent for: '{question}'")
         return {
-            "message": "A human agent has been notified and will respond shortly.",
+            "message": "Please hold on. We're connecting you to a live agent. Someone will assist you shortly.",
             "status": "transferred_to_human"
         }
 
