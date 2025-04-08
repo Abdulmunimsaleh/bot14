@@ -35,28 +35,23 @@ def load_data():
     except FileNotFoundError:
         return scrape_website()
 
-# Send message to Tidio live chat
+# Send message to Tidio live chat with error handling
 def send_message_to_tidio(message: str):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(TIDIO_CHAT_URL)
-        page.wait_for_selector("textarea", timeout=10000)
-
-        # Reassure the user first
-        reassuring_message = "Please hold on. We're connecting you to a live agent. Someone will assist you shortly."
-        page.fill("textarea", reassuring_message)
-        time.sleep(2)
-        page.keyboard.press("Enter")
-        time.sleep(2)
-
-        # Then send the backend notification
-        page.fill("textarea", message)
-        time.sleep(2)
-        page.keyboard.press("Enter")
-        time.sleep(2)
-
-        browser.close()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(TIDIO_CHAT_URL)
+            page.wait_for_selector("textarea", timeout=10000)  # Wait for 10 seconds for the textarea to appear
+            page.fill("textarea", message)
+            time.sleep(2)
+            page.keyboard.press("Enter")
+            time.sleep(2)
+            browser.close()
+    except Exception as e:
+        print(f"Error sending message to Tidio: {e}")
+        return False
+    return True
 
 # Detect if escalation to human is needed
 def needs_human_agent(question: str, answer: str) -> bool:
@@ -77,6 +72,7 @@ def ask_question(question: str):
     except:
         detected_language = "en"
 
+    # Format the instruction only if it's not English
     language_instruction = f"Respond ONLY in {detected_language}." if detected_language != "en" else "Respond in English."
 
     prompt = f"""
@@ -99,7 +95,7 @@ Answer:
     if needs_human_agent(question, answer):
         send_message_to_tidio(f"User asked: '{question}'\nBot could not answer.")
         return {
-            "message": "Please hold on. We're connecting you to a live agent. Someone will assist you shortly.",
+            "message": "I am unable to answer this question right now, but don't worry, we are connecting you to a live agent. They will assist you shortly.",
             "status": "transferred_to_human"
         }
 
@@ -109,10 +105,18 @@ Answer:
 @app.get("/ask")
 def get_answer(question: str = Query(..., title="Question", description="Ask a question about the website")):
     if any(keyword in question.lower() for keyword in ["transfer to human agent", "talk to a person", "speak to support"]):
-        send_message_to_tidio(f"User requested a human agent for: '{question}'")
-        return {
-            "message": "Please hold on. We're connecting you to a live agent. Someone will assist you shortly.",
-            "status": "transferred_to_human"
-        }
+        message_sent = send_message_to_tidio(f"User requested a human agent for: '{question}'")
+        
+        # Reassurance message if live agent request is successful
+        if message_sent:
+            return {
+                "message": "Please hold on, we're connecting you to a live agent. You will be assisted shortly.",
+                "status": "transferred_to_human"
+            }
+        else:
+            return {
+                "message": "Sorry, there was an issue connecting to a live agent. Please try again later.",
+                "status": "error"
+            }
 
     return ask_question(question)
