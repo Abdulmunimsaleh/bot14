@@ -95,7 +95,7 @@ Answer:
     if needs_human_agent(question, answer):
         send_message_to_tidio(f"User asked: '{question}'\nBot could not answer.")
         return {
-            "message": "I am unable to answer this question right now, but don't worry, we are connecting you to a live agent. They will assist you shortly.",
+            "answer": "I am unable to answer this question right now, but don't worry, we are connecting you to a live agent. They will assist you shortly.",
             "status": "transferred_to_human"
         }
 
@@ -110,13 +110,14 @@ def get_answer(question: str = Query(..., title="Question", description="Ask a q
         # Reassurance message if live agent request is successful
         if message_sent:
             return {
-                "message": "Please hold on, we're connecting you to a live agent. You will be assisted shortly.",
+                "answer": "Please hold on, we're connecting you to a live agent. You will be assisted shortly.",
                 "status": "transferred_to_human"
             }
         else:
             return {
-                "message": "Sorry, there was an issue connecting to a live agent. Please try again later.",
+                "answer": "Sorry, there was an issue connecting to a live agent. Please try again later.",
                 "status": "error"
             }
 
     return ask_question(question)
+
